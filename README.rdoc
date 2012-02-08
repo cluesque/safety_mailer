@@ -1,0 +1,41 @@
+== safety_mailer
+
+Restrict email sent by your application to only approved domains or accounts.
+
+Specify a domain (or set of domains, or magic word in email address) email is allowed to go to, and email to all other domains is silently dropped.
+
+This is useful for testing or staging environments where you want to be certain email to real customers doesn't escape the lab.
+
+Layered on the Mail gem, so Rails >= 3.0 applications can use safety_mailer.
+
+== Rails >= 3.0
+
+Add the gem to your +Gemfile+, specifying groups (probably not production) to include it in.
+
+  gem "safety_mailer", :group => :development
+
+Don't forget to <tt>bundle install</tt> to install
+
+In your environment file <tt>config/environments/development.rb</tt> configure it, and some regular expressions.
+
+  config.action_mailer.delivery_method = :safety_mailer
+  SafetyMailer::Config.allowed_matchers = [ /mydomain.com/, /mytestacct@gmail.com/, /super_secret_test/ ]
+
+... and now, email to anyone@mydomain.com, mytestacct@gmail.com, bob+super_secret_test@yahoo.com all get sent
+and email to other recipients (like the real users in the production database you copied to a test server) is suppressed.
+
+== Non-Rails
+
+Any user of the Mail gem can configure safety_mailer:
+
+  require "safety_mailer"
+  Mail.defaults do
+    delivery_method SafetyMailer::Carrier
+  end
+  SafetyMailer::Config.allowed_matchers = [ /mydomain.com/, /mytestacct@gmail.com/, /super_secret_test/ ]
+
+== License
+
+safety_mailer is released under the MIT license:
+
+* http://www.opensource.org/licenses/MIT
