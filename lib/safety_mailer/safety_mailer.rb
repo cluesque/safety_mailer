@@ -1,21 +1,18 @@
 module SafetyMailer
-  class Config
-    @@allowed_matchers = []
-    cattr_accessor :allowed_matchers
-    @@delivery_method = :smtp
-    cattr_accessor :delivery_method
-  end
   class Carrier
     attr_accessor :params
     def initialize(params = {})
       self.params = params
+      delivery_method = params[:delivery_method]
+      settings = params[:delivery_method_settings]
+      @delivery_method = Mail::Configuration.instance.lookup_delivery_method(delivery_method).new(settings)
     end
     def log(msg)
       Rails.logger.warn(msg) if defined?(Rails)
     end
     def deliver!(mail)
       mail.to = mail.to.reject do |recipient|
-        if SafetyMailer::Config.allowed_matchers.any?{ |m| recipient =~ m }
+        if params[:allowed_matchers].any?{ |m| recipient =~ m }
           false
         else
           log "*** safety_mailer suppressing mail to #{recipient}"
@@ -26,7 +23,7 @@ module SafetyMailer
         log "*** safety_mailer - no recipients left ... suppressing delivery altogether"
       else
         log "*** safety_mailer allowing delivery to #{mail.to}"
-        Mail::Configuration.instance.lookup_delivery_method(SafetyMailer::Config.delivery_method).deliver!(mail)
+        @delivery_method.deliver!(mail)
       end
     end
   end
