@@ -3,8 +3,8 @@ module SafetyMailer
     attr_accessor :params
     def initialize(params = {})
       self.params = params
-      delivery_method = params[:delivery_method]
-      settings = params[:delivery_method_settings]
+      delivery_method = params[:delivery_method] || :smtp
+      settings = params[:delivery_method_settings] || {}
       @delivery_method = Mail::Configuration.instance.lookup_delivery_method(delivery_method).new(settings)
     end
     def log(msg)
