@@ -1,10 +1,10 @@
 module SafetyMailer
   class Carrier
-    attr_accessor :params
+    attr_accessor :matchers, :settings
     def initialize(params = {})
-      self.params = params
+      self.matchers = params[:allowed_matchers] || []
+      self.settings = params[:delivery_method_settings] || {}
       delivery_method = params[:delivery_method] || :smtp
-      settings = params[:delivery_method_settings] || {}
       @delivery_method = Mail::Configuration.instance.lookup_delivery_method(delivery_method).new(settings)
     end
     def log(msg)
@@ -12,7 +12,7 @@ module SafetyMailer
     end
     def deliver!(mail)
       mail.to = mail.to.reject do |recipient|
-        if params[:allowed_matchers].any?{ |m| recipient =~ m }
+        if matchers.any?{ |m| recipient =~ m }
           false
         else
           log "*** safety_mailer suppressing mail to #{recipient}"
