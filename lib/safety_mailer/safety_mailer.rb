@@ -11,7 +11,7 @@ module SafetyMailer
       Rails.logger.warn(msg) if defined?(Rails)
     end
     def deliver!(mail)
-      mail.to = mail.to.reject do |recipient|
+      allowed_recipient = Proc.new do |recipient|
         if matchers.any?{ |m| recipient =~ m }
           false
         else
@@ -19,8 +19,10 @@ module SafetyMailer
           true
         end
       end
-      if mail.to.nil? || mail.to.empty?
-        log "*** safety_mailer - no recipients left ... suppressing delivery altogether"
+      mail.to = mail.to.reject(&allowed_recipient) if mail.to
+      if mail.to.nil? || mail.to.empty? and
+         mail['X-SMTPAPI'].nil? || !JSON.parse(mail['X-SMTPAPI'].value)['to'].try(:all?, &allowed_recipient)
+        log "*** safety_mailer suppressing delivery"
       else
         log "*** safety_mailer allowing delivery to #{mail.to}"
         @delivery_method.deliver!(mail)
