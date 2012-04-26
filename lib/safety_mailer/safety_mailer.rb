@@ -12,11 +12,8 @@ module SafetyMailer
     end
     def deliver!(mail)
       allowed_recipient = Proc.new do |recipient|
-        if matchers.any?{ |m| recipient =~ m }
-          false
-        else
-          log "*** safety_mailer suppressing mail to #{recipient}"
-          true
+        matchers.any?{ |m| recipient =~ m }.tap do |result|
+          log "*** safety_mailer suppressing mail to #{recipient}" unless result
         end
       end
 
@@ -26,17 +23,16 @@ module SafetyMailer
           return @delivery_method.deliver!(mail)
         end
       else
-        mail.to = mail.to.reject(&allowed_recipient)
+        mail.to = mail.to.select(&allowed_recipient)
         unless mail.to.empty?
           log "*** safety_mailer allowing delivery to #{mail.to}"
           return @delivery_method.deliver!(mail)
         end
       end
 
+    log "*** safety_mailer suppressing delivery"
     rescue JSON::ParserError
-      log "*** unable to parse the X-SMTPAPI header"
-    ensure
-      log "*** safety_mailer suppressing delivery"
+      log "*** safety_mailer was unable to parse the X-SMTPAPI header"
     end
   end
 end
