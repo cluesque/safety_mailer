@@ -19,14 +19,24 @@ module SafetyMailer
           true
         end
       end
-      mail.to = mail.to.reject(&allowed_recipient) if mail.to
-      if mail.to.nil? || mail.to.empty? and
-         mail['X-SMTPAPI'].nil? || !JSON.parse(mail['X-SMTPAPI'].value)['to'].try(:all?, &allowed_recipient)
-        log "*** safety_mailer suppressing delivery"
+
+      if mail['X-SMTPAPI'] and to = JSON.parse(mail['X-SMTPAPI'].value)['to']
+        if to.all?(&allowed_recipient)
+          log "*** safety_mailer allowing delivery to #{to}"
+          return @delivery_method.deliver!(mail)
+        end
       else
-        log "*** safety_mailer allowing delivery to #{mail.to}"
-        @delivery_method.deliver!(mail)
+        mail.to = mail.to.reject(&allowed_recipient)
+        unless mail.to.empty?
+          log "*** safety_mailer allowing delivery to #{mail.to}"
+          return @delivery_method.deliver!(mail)
+        end
       end
+
+    rescue JSON::ParserError
+      log "*** unable to parse the X-SMTPAPI header"
+    ensure
+      log "*** safety_mailer suppressing delivery"
     end
   end
 end
