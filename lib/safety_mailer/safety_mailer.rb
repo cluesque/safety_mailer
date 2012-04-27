@@ -1,38 +1,59 @@
 module SafetyMailer
   class Carrier
-    attr_accessor :matchers, :settings
+    attr_accessor :matchers, :settings, :mail
+
     def initialize(params = {})
       self.matchers = params[:allowed_matchers] || []
       self.settings = params[:delivery_method_settings] || {}
       delivery_method = params[:delivery_method] || :smtp
       @delivery_method = Mail::Configuration.instance.lookup_delivery_method(delivery_method).new(settings)
     end
-    def log(msg)
-      Rails.logger.warn(msg) if defined?(Rails)
-    end
+
     def deliver!(mail)
-      allowed_recipient = Proc.new do |recipient|
-        matchers.any?{ |m| recipient =~ m }.tap do |result|
-          log "*** safety_mailer suppressing mail to #{recipient}" unless result
-        end
-      end
+      self.mail = mail
+      allowed = filter(recipients)
+      recipients_header = sendgrid? ? JSON.generate(to: allowed) : allowed
 
-      if mail['X-SMTPAPI'] and to = JSON.parse(mail['X-SMTPAPI'].value)['to']
-        if to.all?(&allowed_recipient)
-          log "*** safety_mailer allowing delivery to #{to}"
-          return @delivery_method.deliver!(mail)
-        end
-      else
-        mail.to = mail.to.select(&allowed_recipient)
-        unless mail.to.empty?
-          log "*** safety_mailer allowing delivery to #{mail.to}"
-          return @delivery_method.deliver!(mail)
-        end
-      end
+      @delivery_method.deliver!(mail) if allowed.any?
+    end
 
-    log "*** safety_mailer suppressing delivery"
+    private
+
+    def recipients
+      sendgrid? ? JSON.parse(recipients_header.value)['to'] : recipients_header
     rescue JSON::ParserError
       log "*** safety_mailer was unable to parse the X-SMTPAPI header"
     end
+
+    def sendgrid?
+      !!mail['X-SMTPAPI']
+    end
+
+    def recipients_header
+      @recipients_header ||= sendgrid? ? mail['X-SMTPAPI'] : mail.to
+    end
+
+    def filter(addresses)
+      allowed, rejected = addresses.partition { |r| whitelisted?(r) }
+
+      if allowed.empty?
+        log "*** safety_mailer - no allowed recipients ... suppressing delivery altogether"
+      else
+        rejected.each { |addr| log "*** safety_mailer delivery suppressed for #{addr}" }
+        allowed.each { |addr| log "*** safety_mailer delivery allowed for #{addr}" }
+      end
+
+      allowed
+    end
+
+    def whitelisted?(recipient)
+      matchers.any? { |m| recipient =~ m }
+    end
+
+    def log(msg)
+      Rails.logger.warn(msg) if defined?(Rails)
+    end
+
   end
 end
+
