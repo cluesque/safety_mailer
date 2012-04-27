@@ -12,7 +12,12 @@ module SafetyMailer
     def deliver!(mail)
       self.mail = mail
       allowed = filter(recipients)
-      recipients_header = sendgrid? ? JSON.generate(to: allowed) : allowed
+
+      if sendgrid?
+        recipients_header = JSON.generate(sendgrid_options.merge(:to => allowed))
+      else
+        recipients_header = allowed
+      end
 
       @delivery_method.deliver!(mail) if allowed.any?
     end
@@ -20,13 +25,17 @@ module SafetyMailer
     private
 
     def recipients
-      sendgrid? ? JSON.parse(recipients_header.value)['to'] : recipients_header
-    rescue JSON::ParserError
-      log "*** safety_mailer was unable to parse the X-SMTPAPI header"
+      sendgrid? ? sendgrid_options['to'] : recipients_header
     end
 
     def sendgrid?
       !!mail['X-SMTPAPI']
+    end
+
+    def sendgrid_options
+      @sendgrid_options ||= JSON.parse(recipients_header.value) if sendgrid?
+    rescue JSON::ParserError
+      log "*** safety_mailer was unable to parse the X-SMTPAPI header"
     end
 
     def recipients_header
