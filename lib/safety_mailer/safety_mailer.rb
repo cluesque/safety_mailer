@@ -14,7 +14,7 @@ module SafetyMailer
       allowed = filter(recipients)
 
       if sendgrid?
-        recipients_header = JSON.generate(sendgrid_options.merge(:to => allowed))
+        recipients_header = prepare_sendgrid_delivery(allowed)
       else
         recipients_header = allowed
       end
@@ -57,6 +57,34 @@ module SafetyMailer
 
     def whitelisted?(recipient)
       matchers.any? { |m| recipient =~ m }
+    end
+
+    # Handles clean-up for additional SendGrid features that may be required
+    # by changes to the recipient list. Expects the passed-in Array of
+    # addresses to have been whitelist-filtered already.
+    def prepare_sendgrid_delivery(addresses)
+      amendments = { :to => addresses }
+
+      # The SendGrid Substitution Tags feature, if used, requires that an
+      # ordered Array of substitution values aligns with the Array of
+      # recipients in the "to" field of the API header. If substitution key is
+      # present, this filters the Arrays for each template to re-align with our
+      # whitelisted addresses.
+      #
+      # @see http://docs.sendgrid.com/documentation/api/smtp-api/developers-guide/substitution-tags/
+      if substitutions = sendgrid_options['sub']
+        substitutions.each do |template, values|
+          values = recipients.zip(values).map do |addr, value|
+            value if addresses.include?(addr)
+          end
+
+          substitutions[template] = values.compact
+        end
+
+        amendments.merge!(:sub => substitutions)
+      end
+
+      JSON.generate(sendgrid_options.merge(amendments))
     end
 
     def log(msg)
