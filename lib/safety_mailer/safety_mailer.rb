@@ -7,50 +7,45 @@ module SafetyMailer
       self.settings = params[:delivery_method_settings] || {}
       delivery_method = params[:delivery_method] || :smtp
       @delivery_method = Mail::Configuration.instance.lookup_delivery_method(delivery_method).new(settings)
+      @sendgrid_options = {}
     end
 
     def deliver!(mail)
       self.mail = mail
       allowed = filter(recipients)
 
-      if sendgrid?
-        recipients_header = prepare_sendgrid_delivery(allowed)
-      else
-        recipients_header = allowed
+      if allowed.empty?
+        log "*** safety_mailer - no allowed recipients ... suppressing delivery altogether"
+        return
       end
 
-      @delivery_method.deliver!(mail) if allowed.any?
+      mail['X-SMTPAPI'] = prepare_sendgrid_delivery(allowed) if sendgrid?
+      mail.to = allowed
+
+      @delivery_method.deliver!(mail)
     end
 
     private
 
     def recipients
-      sendgrid? ? sendgrid_options['to'] : recipients_header
+      sendgrid?
+      sendgrid_to = @sendgrid_options['to']
+      sendgrid_to.nil? || sendgrid_to.empty? ? mail.to : sendgrid_to
     end
 
     def sendgrid?
-      !!mail['X-SMTPAPI']
-    end
-
-    def sendgrid_options
-      @sendgrid_options ||= JSON.parse(recipients_header.value) if sendgrid?
+      @sendgrid ||= !!if mail['X-SMTPAPI']
+        @sendgrid_options = JSON.parse(mail['X-SMTPAPI'].value)
+      end
     rescue JSON::ParserError
       log "*** safety_mailer was unable to parse the X-SMTPAPI header"
-    end
-
-    def recipients_header
-      @recipients_header ||= sendgrid? ? mail['X-SMTPAPI'] : mail.to
     end
 
     def filter(addresses)
       allowed, rejected = addresses.partition { |r| whitelisted?(r) }
 
-      if allowed.empty?
-        log "*** safety_mailer - no allowed recipients ... suppressing delivery altogether"
-      else
-        rejected.each { |addr| log "*** safety_mailer delivery suppressed for #{addr}" }
-        allowed.each { |addr| log "*** safety_mailer delivery allowed for #{addr}" }
-      end
+      rejected.each { |addr| log "*** safety_mailer delivery suppressed for #{addr}" }
+      allowed.each { |addr| log "*** safety_mailer delivery allowed for #{addr}" }
 
       allowed
     end
@@ -72,7 +67,7 @@ module SafetyMailer
       # whitelisted addresses.
       #
       # @see http://docs.sendgrid.com/documentation/api/smtp-api/developers-guide/substitution-tags/
-      if substitutions = sendgrid_options['sub']
+      if substitutions = @sendgrid_options['sub']
         substitutions.each do |template, values|
           values = recipients.zip(values).map do |addr, value|
             value if addresses.include?(addr)
@@ -81,10 +76,10 @@ module SafetyMailer
           substitutions[template] = values.compact
         end
 
-        amendments.merge!(:sub => substitutions)
+        amendments[:sub] = substitutions
       end
 
-      JSON.generate(sendgrid_options.merge(amendments))
+      JSON.generate(@sendgrid_options.merge(amendments))
     end
 
     def log(msg)
@@ -93,4 +88,3 @@ module SafetyMailer
 
   end
 end
-
