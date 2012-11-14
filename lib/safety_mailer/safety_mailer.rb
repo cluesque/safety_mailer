@@ -19,7 +19,7 @@ module SafetyMailer
         return
       end
 
-      mail['X-SMTPAPI'] = prepare_sendgrid_delivery(allowed) if sendgrid?
+      mail['X-SMTPAPI'].value = prepare_sendgrid_delivery(allowed) if sendgrid?
       mail.to = allowed
 
       @delivery_method.deliver!(mail)
@@ -58,7 +58,7 @@ module SafetyMailer
     # by changes to the recipient list. Expects the passed-in Array of
     # addresses to have been whitelist-filtered already.
     def prepare_sendgrid_delivery(addresses)
-      amendments = { :to => addresses }
+      amendments = { 'to' => addresses }
 
       # The SendGrid Substitution Tags feature, if used, requires that an
       # ordered Array of substitution values aligns with the Array of
@@ -76,7 +76,7 @@ module SafetyMailer
           substitutions[template] = values.compact
         end
 
-        amendments[:sub] = substitutions
+        amendments['sub'] = substitutions
       end
 
       JSON.generate(@sendgrid_options.merge(amendments))
