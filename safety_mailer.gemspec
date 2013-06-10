@@ -14,4 +14,8 @@ Gem::Specification.new do |s|
 
   s.files        = Dir["lib/**/*", "[A-Z]*"] - ["Gemfile.lock"]
   s.require_path = "lib"
+
+  s.add_development_dependency 'rspec'
+  s.add_development_dependency "mail"
+  s.add_development_dependency "rake"
 end
