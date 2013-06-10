@@ -2,3 +2,5 @@
 .bundle
 .project
 Gemfile.lock
+.ruby-version
+.ruby-gemset
