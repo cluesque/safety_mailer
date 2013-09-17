@@ -34,7 +34,7 @@ describe SafetyMailer::Carrier do
         subject "Angry Birds Star Wars"
         body    "Lorem ipsum dolor sit amet"
       end.tap do |m|
-        m['X-SMTPAPI'] = stub(value: '{}')
+        m['X-SMTPAPI'] = double(value: '{}')
       end
     end
 
