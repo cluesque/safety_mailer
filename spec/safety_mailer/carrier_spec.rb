@@ -26,6 +26,10 @@ describe SafetyMailer::Carrier do
     }).deliver!(mail)
   end
 
+  it 'allows initialization with a custom delivery method' do
+    SafetyMailer::Carrier.new(:delivery_method => :faker).should be_a SafetyMailer::Carrier
+  end
+
   context "with irrelevant SendGrid headers" do
     let(:mail) do
       Mail.new do
@@ -34,7 +38,7 @@ describe SafetyMailer::Carrier do
         subject "Angry Birds Star Wars"
         body    "Lorem ipsum dolor sit amet"
       end.tap do |m|
-        m['X-SMTPAPI'] = stub(value: '{}')
+        m['X-SMTPAPI'] = double(value: '{}')
       end
     end
 

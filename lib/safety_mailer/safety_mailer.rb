@@ -6,7 +6,7 @@ module SafetyMailer
       self.matchers = params[:allowed_matchers] || []
       self.settings = params[:delivery_method_settings] || {}
       delivery_method = params[:delivery_method] || :smtp
-      @delivery_method = Mail::Configuration.instance.lookup_delivery_method(delivery_method).new(settings)
+      @delivery_method = ActionMailer::Base.delivery_methods[delivery_method].new(settings)
       @sendgrid_options = {}
     end
 
