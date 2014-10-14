@@ -30,7 +30,7 @@ module SafetyMailer
     def recipients
       sendgrid?
       sendgrid_to = @sendgrid_options['to']
-      sendgrid_to.nil? || sendgrid_to.empty? ? mail.to : sendgrid_to
+      sendgrid_to.nil? || sendgrid_to.empty? ? mail.to : sendgrid_to || []
     end
 
     def sendgrid?
