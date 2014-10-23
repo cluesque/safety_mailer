@@ -25,7 +25,11 @@ module SafetyMailer
       @delivery_method.deliver!(mail)
     end
 
-    private
+    def whitelisted?(recipient)
+      matchers.any? { |m| recipient =~ m }
+    end
+
+  private
 
     def recipients
       sendgrid?
@@ -48,10 +52,6 @@ module SafetyMailer
       allowed.each { |addr| log "*** safety_mailer delivery allowed for #{addr}" }
 
       allowed
-    end
-
-    def whitelisted?(recipient)
-      matchers.any? { |m| recipient =~ m }
     end
 
     # Handles clean-up for additional SendGrid features that may be required
