@@ -46,6 +46,13 @@ Any user of the Mail gem can configure safety_mailer:
     }
   end
 
+== Non-Mail
+
+If you're not using the Mail gem (or use it sometimes but want to use the same logic / configuration in other contexts),
+you can filter directly:
+
+  filtered_array = SafetyMailer::Carrier.new(ActionMailer::Base.safety_mailer_settings).filter(unfiltered_email_addresses)
+
 == License
 
 safety_mailer is released under the MIT license:

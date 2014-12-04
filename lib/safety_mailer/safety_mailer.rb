@@ -29,6 +29,15 @@ module SafetyMailer
       matchers.any? { |m| recipient =~ m }
     end
 
+    def filter(addresses)
+      allowed, rejected = addresses.partition { |r| whitelisted?(r) }
+
+      rejected.each { |addr| log "*** safety_mailer delivery suppressed for #{addr}" }
+      allowed.each { |addr| log "*** safety_mailer delivery allowed for #{addr}" }
+
+      allowed
+    end
+
   private
 
     def recipients
@@ -43,15 +52,6 @@ module SafetyMailer
       end
     rescue JSON::ParserError
       log "*** safety_mailer was unable to parse the X-SMTPAPI header"
-    end
-
-    def filter(addresses)
-      allowed, rejected = addresses.partition { |r| whitelisted?(r) }
-
-      rejected.each { |addr| log "*** safety_mailer delivery suppressed for #{addr}" }
-      allowed.each { |addr| log "*** safety_mailer delivery allowed for #{addr}" }
-
-      allowed
     end
 
     # Handles clean-up for additional SendGrid features that may be required
