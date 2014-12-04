@@ -11,12 +11,13 @@ Gem::Specification.new do |s|
   s.homepage    = "http://github.com/cluesque/safety_mailer"
   s.summary     = "Restrict email sent by your application to only approved domains or accounts."
   s.description = "Specify a domain (or set of domains, or magic word in email address) email is allowed to go to, and email to all other domains is silently dropped. Useful for testing and staging environments."
+  s.license     = 'MIT'
 
   s.files        = Dir["lib/**/*", "[A-Z]*"] - ["Gemfile.lock"]
   s.require_path = "lib"
 
-  s.add_development_dependency 'rspec'
-  s.add_development_dependency "mail"
-  s.add_development_dependency "rake"
-  s.add_development_dependency 'actionmailer'
+  s.add_development_dependency 'rspec', '~> 0'
+  s.add_development_dependency "mail", '~> 0'
+  s.add_development_dependency "rake", '~> 0'
+  s.add_development_dependency 'actionmailer', '~> 0'
 end
