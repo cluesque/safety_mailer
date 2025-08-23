@@ -19,6 +19,7 @@ Gem::Specification.new do |spec|
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = "TODO: Put your gem's public repo URL here."
   spec.metadata['changelog_uri'] = "TODO: Put your gem's CHANGELOG.md URL here."
+  spec.metadata['rubygems_mfa_required'] = 'true'
 
   # Specify which files should be added to the gem when it is released.
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
