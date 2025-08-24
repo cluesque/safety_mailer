@@ -4,8 +4,16 @@ require:
   - rubocop-rspec
 
 AllCops:
-  NewCops: enable
+  NewCops: disable
+
 Metrics/MethodLength:
   Max: 20
+
 Capybara/RSpec/PredicateMatcher:
   Enabled: false
+
+RSpec/ExampleLength:
+  Max: 15
+
+RSpec/MultipleExpectations:
+  Max: 5

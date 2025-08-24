@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 require 'safety_mailer'
+require 'pry'
+require 'support/fake_mailer'
+require 'action_mailer'
+
+ActionMailer::Base.add_delivery_method :faker, FakeMailer
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

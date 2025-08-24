@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'json'
+
 module SafetyMailer
   # Carrier class implements a delivery method for ActionMailer
   class Carrier
@@ -8,8 +10,8 @@ module SafetyMailer
     def initialize(params = {})
       self.matchers = params[:allowed_matchers] || []
       self.settings = params[:delivery_method_settings] || {}
-      delivery_method = params[:delivery_method] || :smtp
-      @delivery_method = ActionMailer::Base.delivery_methods[delivery_method].new(settings)
+      delivery_method_name = params[:delivery_method] || :smtp
+      @delivery_method = ActionMailer::Base.delivery_methods[delivery_method_name].new(settings)
       @sendgrid_options = {}
     end
 
@@ -22,7 +24,11 @@ module SafetyMailer
         return
       end
 
-      mail['X-SMTPAPI'].value = prepare_sendgrid_delivery(allowed) if sendgrid?
+      if sendgrid?
+        sendgrid_header = prepare_sendgrid_delivery(allowed)
+        mail.header.fields.delete_if { |f| f.name =~ /X-SMTPAPI/i }
+        mail['X-SMTPAPI'] = sendgrid_header
+      end
       mail.to = allowed
 
       @delivery_method.deliver!(mail)
