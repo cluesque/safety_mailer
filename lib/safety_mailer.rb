@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
 require_relative 'safety_mailer/version'
-
-module SafetyMailer
-  class Error < StandardError; end
-  # Your code goes here...
-end
+require_relative 'safety_mailer/safety_mailer'
+require_relative 'safety_mailer/railtie' if defined? Rails
