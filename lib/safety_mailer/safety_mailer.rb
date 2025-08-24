@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SafetyMailer
   # Carrier class implements a delivery method for ActionMailer
   class Carrier
@@ -68,12 +70,11 @@ module SafetyMailer
       # whitelisted addresses.
       #
       # @see http://docs.sendgrid.com/documentation/api/smtp-api/developers-guide/substitution-tags/
-      if substitutions = @sendgrid_options['sub']
+      if (substitutions = @sendgrid_options['sub'])
         substitutions.each do |template, values|
           values = recipients.zip(values).map do |addr, value|
             value if addresses.include?(addr)
           end
-
           substitutions[template] = values.compact
         end
 

@@ -4,6 +4,6 @@ require 'safety_mailer'
 
 RSpec.describe SafetyMailer do
   it 'has a version number' do
-    expect(SafetyMailer::VERSION).not_to be nil
+    expect(SafetyMailer::VERSION).not_to be_nil
   end
 end

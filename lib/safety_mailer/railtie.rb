@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SafetyMailer
   # Defining a Railtie to hook into Rails initialization process
   class Railtie < Rails::Railtie
