@@ -8,17 +8,15 @@ Gem::Specification.new do |spec|
   spec.authors = ['Bill Kirtley']
   spec.email = ['bill.kirtley@gmail.com']
 
-  spec.summary = 'TODO: Write a short summary, because RubyGems requires one.'
-  spec.description = 'TODO: Write a longer description or delete this line.'
-  spec.homepage = "TODO: Put your gem's website or public repo URL here."
+  spec.summary = 'Restrict email sent by your application to only approved domains or accounts.'
+  spec.description = 'Specify a domain (or set of domains, or magic word in email address) email is allowed to go to, and email to all other domains is silently dropped. Useful for testing and staging environments.'
+  spec.homepage = 'http://github.com/cluesque/safety_mailer'
   spec.license = 'MIT'
-  spec.required_ruby_version = '>= 3.1.0'
-
-  spec.metadata['allowed_push_host'] = "TODO: Set to your gem server 'https://example.com'"
+  spec.required_ruby_version = '>= 2.7.5'
 
   spec.metadata['homepage_uri'] = spec.homepage
-  spec.metadata['source_code_uri'] = "TODO: Put your gem's public repo URL here."
-  spec.metadata['changelog_uri'] = "TODO: Put your gem's CHANGELOG.md URL here."
+  spec.metadata['source_code_uri'] = 'http://github.com/cluesque/safety_mailer'
+  spec.metadata['changelog_uri'] = 'http://github.com/cluesque/safety_mailer/blob/master/CHANGELOG.md'
   spec.metadata['rubygems_mfa_required'] = 'true'
 
   # Specify which files should be added to the gem when it is released.
