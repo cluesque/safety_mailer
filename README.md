@@ -1,32 +1,67 @@
 # SafetyMailer
 
-TODO: Delete this and the text below, and describe your gem
+Restrict email sent by your application to only approved domains or accounts.
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/safety_mailer`. To experiment with that code, run `bin/console` for an interactive prompt.
+Specify a domain (or set of domains, or magic word in email address) email is allowed to go to, and email to all other domains is silently dropped.
+
+This is useful for testing or staging environments where you want to be certain email to real customers doesn't escape the lab.
+
+Layered on the Mail gem, so Rails >= 3.0 applications (as well as plain ruby apps) can use safety_mailer.
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
+Add the gem to your +Gemfile+, specifying groups (probably not production) to include it in.
 
-Install the gem and add to the application's Gemfile by executing:
-
-```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+```ruby
+gem "safety_mailer", :group => :development
 ```
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+Don't forget to `bundle install` to install
 
-```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+In your environment file `config/environments/development.rb` configure it, and some regular expressions.
+
+```ruby
+config.action_mailer.delivery_method = :safety_mailer
+config.action_mailer.safety_mailer_settings = {
+  allowed_matchers: [ /mydomain.com/, /mytestacct@gmail.com/, /\+safety_mailer@/ ],
+  delivery_method: :smtp,
+  delivery_method_settings: {
+    address: "smtp.mydomain.com",
+    port: 25,
+    domain: "mydomain.com",
+    authentication: :plain,
+    user_name: "mydomain_mailer@mydomain.com",
+    password: "password"
+  }
+}
 ```
 
-## Usage
+Now, email to `anyone@mydomain.com`, `mytestacct@gmail.com`, `bob+safety_mailer@yahoo.com` all get sent, and email to other recipients (like the real users in the production database you copied to a test server) is suppressed.
 
-TODO: Write usage instructions here
+## Non-Rails
+
+Any user of the Mail gem can configure safety_mailer:
+
+```ruby
+require "safety_mailer"
+Mail.defaults do
+delivery_method SafetyMailer::Carrier, {
+... same settings as above
+}
+end
+```
+
+## Non-Mail
+
+If you're not using the Mail gem (or use it sometimes but want to use the same logic / configuration in other contexts), you can filter directly:
+
+```
+filtered_array = SafetyMailer::Carrier.new(ActionMailer::Base.safety_mailer_settings).filter(unfiltered_email_addresses)
+```
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
 To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
 
