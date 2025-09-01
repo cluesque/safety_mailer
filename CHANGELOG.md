@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [0.1.0] - 2025-09-01
+
+- Rebuilding on a modern gem framework
+- Shiny new logo!
+- Port testing to minitest
+- Fix support for non-rails (Mail gem) usage
+- Add support for custom loggers (e.g., non-rails)
+
 ## [0.0.10] - 2014-12-04
 
 - Support use separate from Mail gem
