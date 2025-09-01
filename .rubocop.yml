@@ -1,19 +1,12 @@
 plugins:
   - rubocop-rake
-require:
-  - rubocop-rspec
+  - rubocop-minitest
 
 AllCops:
   NewCops: disable
 
 Metrics/MethodLength:
-  Max: 20
+  Max: 30
 
-Capybara/RSpec/PredicateMatcher:
-  Enabled: false
-
-RSpec/ExampleLength:
-  Max: 15
-
-RSpec/MultipleExpectations:
-  Max: 5
+Metrics/AbcSize:
+  Max: 25

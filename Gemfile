@@ -11,8 +11,8 @@ gem 'pry'
 gem 'rake', '~> 13.0'
 
 gem 'mail'
-gem 'rspec', '~> 3.0'
+gem 'minitest', '~> 5.0'
 
 gem 'rubocop', '~> 1.21'
+gem 'rubocop-minitest', '~> 0.35', require: false
 gem 'rubocop-rake', '~> 0.6', require: false
-gem 'rubocop-rspec', '~> 2.5', require: false

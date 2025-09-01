@@ -91,7 +91,7 @@ module SafetyMailer
     end
 
     def log(msg)
-      Rails.logger.warn(msg) if defined?(Rails)
+      Rails.logger.warn(msg) if defined?(Rails) && Rails.respond_to?(:logger)
     end
   end
 end
