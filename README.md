@@ -128,6 +128,12 @@ If you're not using the Mail gem (or use it sometimes but want to use the same l
 filtered_array = SafetyMailer::Carrier.new(ActionMailer::Base.safety_mailer_settings).filter(unfiltered_email_addresses)
 ```
 
+## Demo Applications
+
+- [safety_mailer_rails](https://github.com/cluesque/safety_mailer_rails) is a working rails application demonstrating use of safety_mailer with ActionMailer.
+
+- [safety_mailer_mail](https://github.com/cluesque/safety_mailer_rails) is a standalone ruby script demonstrating use of safety_mailer in a non-Rails application with the Mail gem.
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
