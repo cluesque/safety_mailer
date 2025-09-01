@@ -38,6 +38,73 @@ config.action_mailer.safety_mailer_settings = {
 }
 ```
 
+## Logging
+
+SafetyMailer supports custom logging to help you monitor email filtering decisions. By default, SafetyMailer will automatically use `Rails.logger` if available, or remain silent if no logger is configured.
+
+### Rails Applications
+
+In Rails applications, SafetyMailer automatically uses `Rails.logger` by default. You'll see log messages like:
+
+```
+SafetyMailer: Processing 3 recipient(s) - 2 allowed, 1 suppressed
+SafetyMailer: Allowed delivery for user@mydomain.com
+SafetyMailer: Suppressed delivery for user@external.com (no matching allowed pattern)
+SafetyMailer: Delivering email to 2 allowed recipient(s)
+```
+
+### Custom Logger Configuration
+
+You can specify a custom logger in your configuration:
+
+```ruby
+require 'logger'
+
+# Create a custom logger
+safety_logger = Logger.new(Rails.root.join('log', 'safety_mailer.log'))
+
+config.action_mailer.delivery_method = :safety_mailer
+config.action_mailer.safety_mailer_settings = {
+  allowed_matchers: [ /mydomain.com/, /mytestacct@gmail.com/ ],
+  logger: safety_logger,  # Custom logger
+  delivery_method: :smtp,
+  # ... other settings
+}
+```
+
+### Disabling Logging
+
+To disable logging entirely, set the logger to `nil`:
+
+```ruby
+config.action_mailer.safety_mailer_settings = {
+  allowed_matchers: [ /mydomain.com/ ],
+  logger: nil,  # Disable all logging
+  delivery_method: :smtp,
+  # ... other settings
+}
+```
+
+### Non-Rails Applications
+
+For non-Rails applications, SafetyMailer remains silent by default. You can enable logging by providing a custom logger:
+
+```ruby
+require "safety_mailer"
+require "logger"
+
+# Configure with custom logger
+custom_logger = Logger.new(STDOUT)
+
+Mail.defaults do
+  delivery_method SafetyMailer::Carrier, {
+    allowed_matchers: [ /mydomain.com/ ],
+    logger: custom_logger,
+    delivery_method: :smtp
+  }
+end
+```
+
 Now, email to `anyone@mydomain.com`, `mytestacct@gmail.com`, `bob+safety_mailer@yahoo.com` all get sent, and email to other recipients (like the real users in the production database you copied to a test server) is suppressed.
 
 ## Non-Rails

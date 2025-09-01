@@ -70,4 +70,30 @@ class IntegrationTest < Minitest::Test
   ensure
     ActionMailer::Base.delivery_method = @original_method
   end
+
+  def test_rails_integration_with_custom_logger
+    require 'logger'
+    require 'stringio'
+
+    log_output = StringIO.new
+    custom_logger = Logger.new(log_output)
+
+    @original_method = ActionMailer::Base.delivery_method
+    ActionMailer::Base.delivery_method = :safety_mailer
+    ActionMailer::Base.safety_mailer_settings = {
+      delivery_method: @original_method,
+      allowed_matchers: [/@safe\.example\.com$/],
+      logger: custom_logger
+    }
+
+    # Test that logging works with custom logger
+    message = Message.new('user@safe.example.com')
+    message.send_time_notification
+
+    log_content = log_output.string
+    assert_match(/SafetyMailer: Processing 1 recipient\(s\) - 1 allowed, 0 suppressed/, log_content)
+    assert_match(/SafetyMailer: Allowed delivery for user@safe\.example\.com/, log_content)
+  ensure
+    ActionMailer::Base.delivery_method = @original_method
+  end
 end

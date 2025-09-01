@@ -5,11 +5,12 @@ require 'json'
 module SafetyMailer
   # Carrier class implements a delivery method for ActionMailer
   class Carrier
-    attr_accessor :matchers, :settings, :mail
+    attr_accessor :matchers, :settings, :mail, :logger
 
     def initialize(params = {})
       self.matchers = params[:allowed_matchers] || []
       self.settings = params[:delivery_method_settings] || {}
+      self.logger = determine_logger(params[:logger])
       delivery_method_name = params[:delivery_method] || :smtp
       @delivery_method = if defined?(ActionMailer)
                            ActionMailer::Base.delivery_methods[delivery_method_name].new(settings)
@@ -21,10 +22,13 @@ module SafetyMailer
 
     def deliver!(mail)
       self.mail = mail
-      allowed = filter(recipients)
+      original_recipients = recipients
+      allowed = filter(original_recipients)
+
+      log_delivery_summary(original_recipients, allowed)
 
       if allowed.empty?
-        log '*** safety_mailer - no allowed recipients ... suppressing delivery altogether'
+        log 'SafetyMailer: No allowed recipients found - suppressing delivery altogether'
         return
       end
 
@@ -32,9 +36,11 @@ module SafetyMailer
         sendgrid_header = prepare_sendgrid_delivery(allowed)
         mail.header.fields.delete_if { |f| f.name =~ /X-SMTPAPI/i }
         mail['X-SMTPAPI'] = sendgrid_header
+        log 'SafetyMailer: Updated SendGrid header with filtered recipients'
       end
       mail.to = allowed
 
+      log "SafetyMailer: Delivering email to #{allowed.size} allowed recipient(s)"
       @delivery_method.deliver!(mail)
     end
 
@@ -43,10 +49,12 @@ module SafetyMailer
     end
 
     def filter(addresses)
+      return [] if addresses.nil? || addresses.empty?
+
       allowed, rejected = addresses.partition { |r| whitelisted?(r) }
 
-      rejected.each { |addr| log "*** safety_mailer delivery suppressed for #{addr}" }
-      allowed.each { |addr| log "*** safety_mailer delivery allowed for #{addr}" }
+      rejected.each { |addr| log "SafetyMailer: Suppressed delivery for #{addr} (no matching allowed pattern)" }
+      allowed.each { |addr| log "SafetyMailer: Allowed delivery for #{addr}" }
 
       allowed
     end
@@ -64,7 +72,8 @@ module SafetyMailer
                         @sendgrid_options = JSON.parse(mail['X-SMTPAPI'].value)
                       end
     rescue JSON::ParserError
-      log '*** safety_mailer was unable to parse the X-SMTPAPI header'
+      log 'SafetyMailer: Unable to parse X-SMTPAPI header - invalid JSON format'
+      false
     end
 
     # Handles clean-up for additional SendGrid features that may be required
@@ -95,7 +104,26 @@ module SafetyMailer
     end
 
     def log(msg)
-      Rails.logger.warn(msg) if defined?(Rails) && Rails.respond_to?(:logger)
+      return unless logger
+
+      logger.warn(msg)
+    end
+
+    def determine_logger(custom_logger)
+      return custom_logger if custom_logger
+      return Rails.logger if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+
+      nil
+    end
+
+    def log_delivery_summary(original_recipients, allowed_recipients)
+      return unless logger
+
+      total = original_recipients.size
+      allowed = allowed_recipients.size
+      suppressed = total - allowed
+
+      log "SafetyMailer: Processing #{total} recipient(s) - #{allowed} allowed, #{suppressed} suppressed"
     end
   end
 end
