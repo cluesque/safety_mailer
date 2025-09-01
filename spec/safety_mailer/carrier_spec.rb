@@ -1,88 +1,115 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
+require 'mail'
 
-describe SafetyMailer::Carrier do
-  let(:mail) do
-    Mail.new do
-      from    'safety@example.com'
-      to      'mailer@example.com, pop@oozou.com'
-      subject "Angry Birds Star Wars"
-      body    "Lorem ipsum dolor sit amet"
+RSpec.describe SafetyMailer::Carrier do
+  # rubocop:disable RSpec/VariableDefinition, RSpec/VariableName
+  describe 'stubbing delivery class' do
+    describe 'no recipient is whitelisted' do
+      let(:mailer) { instance_double(Mail::SMTP) }
+
+      before do
+        message = Mail.new do
+          from    'safety@example.com'
+          to      'mailer@example.com, pop@oozou.com'
+          subject 'Angry Birds Star Wars'
+          body    'Lorem ipsum dolor sit amet'
+        end
+        allow(mailer).to receive(:deliver!)
+        allow(Mail::SMTP).to receive(:new).and_return(mailer)
+        described_class.new({ allowed_matchers: [/@unrelated\.com$/] }).deliver!(message)
+      end
+
+      it 'suppresses delivery altogether' do
+        expect(mailer).not_to have_received(:deliver!)
+      end
     end
-  end
 
-  it "prevents mail from going out if no recipient is whitelisted" do
-    Mail::SMTP.any_instance.should_not_receive(:deliver!)
-    SafetyMailer::Carrier.new.deliver!(mail)
-  end
+    describe 'allowing mail to go only to some recipients' do
+      let(:mailer) { instance_double(Mail::SMTP) }
 
-  it "strips out unsafe recipients" do
-    Mail::SMTP.any_instance.should_receive(:deliver!) do |mail|
-      mail.to.should_not include 'mailer@example.com'
-      mail.to.should     include 'pop@oozou.com'
-    end.once
+      before do
+        allow(mailer).to receive(:deliver!)
+        allow(Mail::SMTP).to receive(:new).and_return(mailer)
+        message = Mail.new do
+          from    'safety@example.com'
+          to      'mailer@example.com, pop@oozou.com'
+          subject 'Angry Birds Star Wars'
+          body    'Lorem ipsum dolor sit amet'
+        end
 
-    SafetyMailer::Carrier.new({
-      allowed_matchers: [/@oozou\.com$/]
-    }).deliver!(mail)
+        described_class.new({ allowed_matchers: [/@oozou\.com$/] }).deliver!(message)
+      end
+
+      it 'allows mail to go only to whitelisted recipients' do
+        expect(mailer).to have_received(:deliver!) do |mail|
+          expect(mail.to).not_to include 'mailer@example.com'
+          expect(mail.to).to include 'pop@oozou.com'
+        end
+      end
+    end
+
+    context 'with irrelevant SendGrid headers' do
+      let(:mailer) { instance_double(Mail::SMTP) }
+
+      before do
+        allow(mailer).to receive(:deliver!)
+        allow(Mail::SMTP).to receive(:new).and_return(mailer)
+        message = Mail.new do
+          from    'safety@example.com'
+          to      'mailer@example.com, pop@oozou.com'
+          subject 'Angry Birds Star Wars'
+          body    'Lorem ipsum dolor sit amet'
+        end
+        message['X-SMTPAPI'] = '{}'
+        described_class.new(allowed_matchers: [/@oozou\.com$/]).deliver!(message)
+      end
+
+      it 'ignores SendGrid headers, strips out unsafe recipients' do
+        expect(mailer).to have_received(:deliver!) do |mail|
+          expect(mail.to).not_to include 'mailer@example.com'
+          expect(mail.to).to include 'pop@oozou.com'
+        end
+      end
+    end
+
+    context 'with SendGrid batch mailing' do
+      let(:mailer) { instance_double(Mail::SMTP) }
+
+      before do
+        allow(mailer).to receive(:deliver!).once
+        allow(Mail::SMTP).to receive(:new).and_return(mailer)
+        message = Mail.new do
+          from    'safety@example.com'
+          subject 'Lunch Order'
+          body    'You like -food-'
+        end
+        sendgrid = {
+          'to' => ['mailer@example.com', 'pop@oozou.com'],
+          'sub' => { '-food-' => %w[bagels sushi] }
+        }
+        message['X-SMTPAPI'] = JSON.generate(sendgrid)
+        described_class.new(allowed_matchers: [/@oozou\.com$/]).deliver!(message)
+      end
+
+      it 'strips out unsafe recipients and corresponding substitutions' do
+        expect(mailer).to have_received(:deliver!) do |mail|
+          parsed = JSON.parse(mail['X-SMTPAPI'].value)
+          recipients = parsed['to']
+          expect(recipients).not_to include 'mailer@example.com'
+          expect(recipients).to include 'pop@oozou.com'
+
+          substitutions = parsed['sub']
+          expect(substitutions['-food-']).not_to include 'bagels'
+          expect(substitutions['-food-']).to     include 'sushi'
+        end
+      end
+    end
   end
 
   it 'allows initialization with a custom delivery method' do
-    SafetyMailer::Carrier.new(:delivery_method => :faker).should be_a SafetyMailer::Carrier
+    expect(described_class.new(delivery_method: :faker)).to be_a described_class
   end
-
-  context "with irrelevant SendGrid headers" do
-    let(:mail) do
-      Mail.new do
-        from    'safety@example.com'
-        to      'mailer@example.com, pop@oozou.com'
-        subject "Angry Birds Star Wars"
-        body    "Lorem ipsum dolor sit amet"
-      end.tap do |m|
-        m['X-SMTPAPI'] = double(value: '{}')
-      end
-    end
-
-    it "ignores SendGrid headers, strips out unsafe recipients" do
-      Mail::SMTP.any_instance.should_receive(:deliver!) do |mail|
-        mail.to.should_not include 'mailer@example.com'
-        mail.to.should     include 'pop@oozou.com'
-      end.once
-
-      SafetyMailer::Carrier.new({
-        allowed_matchers: [/@oozou\.com$/]
-      }).deliver!(mail)
-    end
-  end
-
-  context "with SendGrid batch mailing" do
-    let(:mail) do
-      Mail.new do
-        from    'safety@example.com'
-        subject "Lunch Order"
-        body    "You like -food-"
-      end.tap do |m|
-        sendgrid = {
-          'to'  => ['mailer@example.com', 'pop@oozou.com'],
-          'sub' => { '-food-' => ['bagels', 'sushi'] }
-        }
-        m['X-SMTPAPI'] = JSON.generate(sendgrid)
-      end
-    end
-
-    it "strips out unsafe recipients and corresponding substitutions" do
-      Mail::SMTP.any_instance.should_receive(:deliver!) do |mail|
-        recipients = JSON.parse(mail['X-SMTPAPI'].value)['to']
-        recipients.should_not include 'mailer@example.com'
-        recipients.should     include 'pop@oozou.com'
-
-        substitutions = JSON.parse(mail['X-SMTPAPI'].value)['sub']
-        substitutions['-food-'].should_not include 'bagels'
-        substitutions['-food-'].should     include 'sushi'
-      end.once
-
-      SafetyMailer::Carrier.new({
-        allowed_matchers: [/@oozou\.com$/]
-      }).deliver!(mail)
-    end
-  end
+  # rubocop:enable RSpec/VariableDefinition, RSpec/VariableName
 end

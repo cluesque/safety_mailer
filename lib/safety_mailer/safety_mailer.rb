@@ -1,12 +1,17 @@
+# frozen_string_literal: true
+
+require 'json'
+
 module SafetyMailer
+  # Carrier class implements a delivery method for ActionMailer
   class Carrier
     attr_accessor :matchers, :settings, :mail
 
     def initialize(params = {})
       self.matchers = params[:allowed_matchers] || []
       self.settings = params[:delivery_method_settings] || {}
-      delivery_method = params[:delivery_method] || :smtp
-      @delivery_method = ActionMailer::Base.delivery_methods[delivery_method].new(settings)
+      delivery_method_name = params[:delivery_method] || :smtp
+      @delivery_method = ActionMailer::Base.delivery_methods[delivery_method_name].new(settings)
       @sendgrid_options = {}
     end
 
@@ -15,11 +20,15 @@ module SafetyMailer
       allowed = filter(recipients)
 
       if allowed.empty?
-        log "*** safety_mailer - no allowed recipients ... suppressing delivery altogether"
+        log '*** safety_mailer - no allowed recipients ... suppressing delivery altogether'
         return
       end
 
-      mail['X-SMTPAPI'].value = prepare_sendgrid_delivery(allowed) if sendgrid?
+      if sendgrid?
+        sendgrid_header = prepare_sendgrid_delivery(allowed)
+        mail.header.fields.delete_if { |f| f.name =~ /X-SMTPAPI/i }
+        mail['X-SMTPAPI'] = sendgrid_header
+      end
       mail.to = allowed
 
       @delivery_method.deliver!(mail)
@@ -38,7 +47,7 @@ module SafetyMailer
       allowed
     end
 
-  private
+    private
 
     def recipients
       sendgrid?
@@ -48,10 +57,10 @@ module SafetyMailer
 
     def sendgrid?
       @sendgrid ||= !!if mail['X-SMTPAPI']
-        @sendgrid_options = JSON.parse(mail['X-SMTPAPI'].value)
-      end
+                        @sendgrid_options = JSON.parse(mail['X-SMTPAPI'].value)
+                      end
     rescue JSON::ParserError
-      log "*** safety_mailer was unable to parse the X-SMTPAPI header"
+      log '*** safety_mailer was unable to parse the X-SMTPAPI header'
     end
 
     # Handles clean-up for additional SendGrid features that may be required
@@ -67,12 +76,11 @@ module SafetyMailer
       # whitelisted addresses.
       #
       # @see http://docs.sendgrid.com/documentation/api/smtp-api/developers-guide/substitution-tags/
-      if substitutions = @sendgrid_options['sub']
+      if (substitutions = @sendgrid_options['sub'])
         substitutions.each do |template, values|
           values = recipients.zip(values).map do |addr, value|
             value if addresses.include?(addr)
           end
-
           substitutions[template] = values.compact
         end
 
@@ -85,6 +93,5 @@ module SafetyMailer
     def log(msg)
       Rails.logger.warn(msg) if defined?(Rails)
     end
-
   end
 end
